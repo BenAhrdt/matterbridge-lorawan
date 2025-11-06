@@ -1,0 +1,10 @@
+{
+  "name": "matterbridge-lorawan",
+  "type": "DynamicPlatform",
+  "host": "mqtt://192.168.2.243",
+  "port": 1883,
+  "username": "mqttuser",
+  "password": "",
+  "topic": "smarthome",
+  "debug": false
+}
