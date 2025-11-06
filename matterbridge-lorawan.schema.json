@@ -1,0 +1,44 @@
+{
+  "title": "LoRaWAN MQTT Bridge Plugin",
+  "description": "matterbridge-lorawan v1.0.2 by BenAhrdt",
+  "type": "object",
+  "properties": {
+    "host": {
+      "type": "string",
+      "title": "MQTT Host",
+      "description": "Adresse oder URL des MQTT Brokers (z. B. mqtt://192.168.2.243)",
+      "default": "mqtt://192.168.2.243"
+    },
+    "port": {
+      "type": "number",
+      "title": "MQTT Port",
+      "description": "Port des MQTT Brokers (Standard: 1883)",
+      "default": 1883
+    },
+    "username": {
+      "type": "string",
+      "title": "MQTT Benutzername",
+      "description": "Benutzername für den MQTT Broker",
+      "default": "mqttuser"
+    },
+    "password": {
+      "type": "string",
+      "title": "MQTT Passwort",
+      "description": "Passwort für den MQTT Benutzer",
+      "default": "",
+      "secret": true
+    },
+    "topic": {
+      "type": "string",
+      "title": "MQTT Topic",
+      "description": "MQTT Topic, das für Nachrichten verwendet wird",
+      "default": "smarthome"
+    },
+    "debug": {
+      "type": "boolean",
+      "title": "Debugmodus aktivieren",
+      "description": "Aktiviere zusätzliche Debug-Ausgaben im Log",
+      "default": false
+    }
+  }
+}
