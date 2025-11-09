@@ -28,13 +28,50 @@ import { AnsiLogger, LogLevel } from 'matterbridge/logger';
 import { MqttClientClass } from './mqtt.js';
 
 interface DevicePayload {
+  discovertype: string;
   discoverTopic: string;
-  unique_id: string;
+  unique_id: string; // ⬅️ optional, weil Automations keine haben müssen
   name: string;
   device: {
     name: string;
     identifiers: string[];
   };
+
+  // 🔹 Allgemeine MQTT Discovery-Felder
+  state_topic?: string;
+  command_topic?: string;
+  entity_category?: string;
+  unit_of_measurement?: string;
+  step?: number;
+  min?: number;
+  max?: number;
+  state_class?: string;
+  device_class?: string;
+  payload_on?: string;
+  payload_off?: string;
+  state_on?: string;
+  state_off?: string;
+
+  // 🔹 Thermostat-spezifisch
+  mode_state_topic?: string;
+  mode_command_topic?: string;
+  temperature_state_topic?: string;
+  temperature_command_topic?: string;
+  current_temperature_topic?: string;
+  min_temp?: number;
+  max_temp?: number;
+  modes?: string[];
+  precision?: number;
+  temp_step?: number;
+
+  // 🔹 Automation / Trigger-spezifisch (wie in deinem Beispiel)
+  automation_type?: string;
+  type?: string;
+  subtype?: string;
+  topic?: string;
+
+  // 🔹 Catch-all für unbekannte Felder
+  [key: string]: unknown;
 }
 
 interface DeviceInfo {
@@ -131,6 +168,10 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       const payload = JSON.parse(message);
       // assign topic
       payload.discoverTopic = discoverTopic;
+      // Get Type
+      discoverTopic = discoverTopic.replace(`${String(this.config.discoverTopic)}/`, '');
+      payload.discoverType = discoverTopic.substring(0, discoverTopic.indexOf('/'));
+      this.log.error(payload.discoverType);
       const IduniqueId = payload.unique_id;
       const DeviceName = payload.device.name;
       const DeviceIdentifier = payload.device.identifiers[0];
@@ -226,7 +267,6 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
         })
           .createDefaultBridgedDeviceBasicInformationClusterServer(id.name, 'unknown', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'LoRa Child Endpoint', 10001, '1.0.0')
           .addRequiredClusterServers(); */
-
         // Assign:
         bridgeDevice.addChildDeviceType(id.name, onOffOutlet);
       }
