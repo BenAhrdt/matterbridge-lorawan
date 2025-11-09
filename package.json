@@ -2,7 +2,7 @@
   "name": "matterbridge-lorawan",
   "version": "1.0.2",
   "description": "Matterbridge LoRaWAN Plugin",
-  "author": "https://github.com/Luligu",
+  "author": "https://github.com/BenAhrdt",
   "homepage": "https://github.com/Luligu/matterbridge-plugin-template/blob/main/README.md",
   "license": "Apache-2.0",
   "type": "module",
@@ -24,6 +24,7 @@
   },
   "keywords": [
     "matterbridge",
+    "lorawan",
     "plugin",
     "template",
     "matter.js",

@@ -22,8 +22,25 @@
  * limitations under the License.
  */
 
-import { MatterbridgeDynamicPlatform, MatterbridgeEndpoint, onOffOutlet, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
+import { MatterbridgeDynamicPlatform, onOffOutlet, PlatformConfig, PlatformMatterbridge, MatterbridgeEndpoint, genericSwitch } from 'matterbridge';
 import { AnsiLogger, LogLevel } from 'matterbridge/logger';
+
+import { MqttClientClass } from './mqtt.js';
+
+interface DevicePayload {
+  discoverTopic: string;
+  unique_id: string;
+  name: string;
+  device: {
+    name: string;
+    identifiers: string[];
+  };
+}
+
+interface DeviceInfo {
+  name: string;
+  Ids: Record<string, DevicePayload>;
+}
 
 /**
  * This is the standard interface for Matterbridge plugins.
@@ -41,6 +58,11 @@ export default function initializePlugin(matterbridge: PlatformMatterbridge, log
 // Here we define the TemplatePlatform class, which extends the MatterbridgeDynamicPlatform.
 // If you want to create an Accessory platform plugin, you should extend the MatterbridgeAccessoryPlatform class instead.
 export class TemplatePlatform extends MatterbridgeDynamicPlatform {
+  // Declare Variables
+  private client?: MqttClientClass;
+  private discoveredDevices: Record<string, DeviceInfo> = {};
+  private discoveredIds: Record<string, DevicePayload> = {};
+
   constructor(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig) {
     // Always call super(matterbridge, log, config)
     super(matterbridge, log, config);
@@ -53,7 +75,6 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     }
 
     this.log.info(`Initializing Platform...`);
-    // You can initialize your platform here, like setting up initial state or loading configurations.
   }
 
   override async onStart(reason?: string) {
@@ -61,12 +82,71 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
 
     // Wait for the platform to fully load the select
     await this.ready;
-
+    this.log.info('config: ' + JSON.stringify(this.config));
     // Clean the selectDevice and selectEntity maps, if you want to reset the select.
     await this.clearSelect();
 
-    // Implements your own logic there
-    await this.discoverDevices();
+    // instance Mqtt client
+    const mqttSettings = {
+      discoverTopic: String(this.config.discoverTopic),
+      host: String(this.config.host),
+      port: Number(this.config.port),
+      username: String(this.config.username),
+      password: String(this.config.password),
+    };
+    this.log.info('mqttSettings: ' + JSON.stringify(mqttSettings));
+    this.client = new MqttClientClass(mqttSettings, this.log);
+
+    this.client.on('connect', () => {
+      this.log.info('connected XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+    });
+
+    this.client.on('discover', (topic, message) => {
+      const activeFuntion = 'module.ts - discover';
+      this.log.info(`Function started: ${activeFuntion}`);
+      try {
+        this.collectIdsForDevice(topic, message);
+      } catch (e) {
+        this.log.error(`error at: ${activeFuntion} - ${e}`);
+      }
+    });
+
+    this.client.on('discoverEnds', () => {
+      for (const device in this.discoveredDevices) {
+        this.log.info('New Device:');
+        this.log.info(JSON.stringify(this.discoveredDevices[device]));
+        this.discoverDevice(device, this.discoveredDevices[device]);
+      }
+    });
+
+    /* this.client.on('message', (topic, message) => {
+      // this.discoverDevices();
+    });*/
+  }
+
+  async collectIdsForDevice(discoverTopic: string, message: string) {
+    const activeFuntion = 'module.ts - collectIdsForDevice';
+    this.log.info(`Function started: ${activeFuntion}`);
+    try {
+      const payload = JSON.parse(message);
+      // assign topic
+      payload.discoverTopic = discoverTopic;
+      const IduniqueId = payload.unique_id;
+      const DeviceName = payload.device.name;
+      const DeviceIdentifier = payload.device.identifiers[0];
+
+      if (!this.discoveredIds[IduniqueId]) {
+        this.discoveredIds[IduniqueId] = payload;
+      }
+      if (!this.discoveredDevices[DeviceIdentifier]) {
+        this.discoveredDevices[DeviceIdentifier] = { name: DeviceName, Ids: {} };
+      }
+      if (!this.discoveredDevices[DeviceIdentifier].Ids[IduniqueId]) {
+        this.discoveredDevices[DeviceIdentifier].Ids[IduniqueId] = payload;
+      }
+    } catch (e) {
+      this.log.error(`error at: ${activeFuntion} - ${e}`);
+    }
   }
 
   override async onConfigure() {
@@ -96,26 +176,65 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     if (this.config.unregisterOnShutdown === true) await this.unregisterAllDevices();
   }
 
-  private async discoverDevices() {
-    this.log.info('Discovering devices...');
-    // Implement device discovery logic here.
-    // For example, you might fetch devices from an API.
-    // and register them with the Matterbridge instance.
+  private async discoverDevice(deviceUniqueId: string, device: DeviceInfo) {
+    const activeFuntion = 'module.ts - discoverDevice';
+    this.log.info(`Function started: ${activeFuntion}`);
+    try {
+      /* const deviceToDiscover = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: deviceUniqueId })
+        .createDefaultBridgedDeviceBasicInformationClusterServer(
+          device.name,
+          'SN123456',
+          this.matterbridge.aggregatorVendorId,
+          'Matterbridge',
+          'Matterbridge Outlet',
+          10000,
+          '1.0.0',
+        )
+        .createDefaultPowerSourceWiredClusterServer()
+        .addRequiredClusterServers()
+        .addCommandHandler('on', (data) => {
+          this.log.info(`Command on called on cluster ${data.cluster}`);
+        })
+        .addCommandHandler('off', (data) => {
+          this.log.info(`Command off called on cluster ${data.cluster}`);
+        });
 
-    // Example: Create and register an outlet device
-    // If you want to create an Accessory platform plugin and your platform extends MatterbridgeAccessoryPlatform,
-    // instead of createDefaultBridgedDeviceBasicInformationClusterServer, call createDefaultBasicInformationClusterServer().
-    const outlet = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: 'outlet1' })
-      .createDefaultBridgedDeviceBasicInformationClusterServer('Outlet', 'SN123456', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'Matterbridge Outlet', 10000, '1.0.0')
-      .createDefaultPowerSourceWiredClusterServer()
-      .addRequiredClusterServers()
-      .addCommandHandler('on', (data) => {
-        this.log.info(`Command on called on cluster ${data.cluster}`);
+      await this.registerDevice(deviceToDiscover);*/
+      // Bridge-Hauptgerät
+      const bridgeDevice = new MatterbridgeEndpoint(genericSwitch, {
+        uniqueStorageKey: deviceUniqueId,
       })
-      .addCommandHandler('off', (data) => {
-        this.log.info(`Command off called on cluster ${data.cluster}`);
-      });
+        .createDefaultBridgedDeviceBasicInformationClusterServer(
+          device.name,
+          'unknown',
+          this.matterbridge.aggregatorVendorId,
+          'Matterbridge',
+          'LoRaWAN Base Device',
+          10000,
+          '1.0.0',
+        )
+        .createDefaultPowerSourceWiredClusterServer()
+        .addRequiredClusterServers();
 
-    await this.registerDevice(outlet);
+      /* for (const id of Object.values(device.Ids)) {
+        bridgeDevice.addChildDeviceType(id.unique_id, onOffOutlet);
+      }*/
+
+      for (const id of Object.values(device.Ids)) {
+        /* const child = new MatterbridgeEndpoint(onOffOutlet, {
+          uniqueStorageKey: id.unique_id,
+        })
+          .createDefaultBridgedDeviceBasicInformationClusterServer(id.name, 'unknown', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'LoRa Child Endpoint', 10001, '1.0.0')
+          .addRequiredClusterServers(); */
+
+        // Assign:
+        bridgeDevice.addChildDeviceType(id.name, onOffOutlet);
+      }
+
+      // Register device
+      await this.registerDevice(bridgeDevice);
+    } catch (e) {
+      this.log.error(`error at: ${activeFuntion} - ${e}`);
+    }
   }
 }

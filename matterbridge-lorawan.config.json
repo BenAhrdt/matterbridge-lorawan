@@ -5,6 +5,6 @@
   "port": 1883,
   "username": "mqttuser",
   "password": "",
-  "topic": "smarthome",
+  "discoverTopic": "smarthome",
   "debug": false
 }

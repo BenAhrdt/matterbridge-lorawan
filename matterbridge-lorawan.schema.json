@@ -28,7 +28,7 @@
       "default": "",
       "secret": true
     },
-    "topic": {
+    "discoverTopic": {
       "type": "string",
       "title": "MQTT Topic",
       "description": "MQTT Topic, das für Nachrichten verwendet wird",
