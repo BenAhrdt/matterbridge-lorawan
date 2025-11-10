@@ -22,7 +22,34 @@
  * limitations under the License.
  */
 
-import { MatterbridgeDynamicPlatform, onOffOutlet, PlatformConfig, PlatformMatterbridge, MatterbridgeEndpoint, genericSwitch } from 'matterbridge';
+import {
+  MatterbridgeDynamicPlatform,
+  PlatformConfig,
+  PlatformMatterbridge,
+  MatterbridgeEndpoint,
+  genericSwitch,
+  DeviceTypeDefinition,
+  // DeviceTypes used in HA → Matter mapping
+  onOffOutlet,
+  onOffSwitch,
+  dimmableLight,
+  temperatureSensor,
+  humiditySensor,
+  pressureSensor,
+  lightSensor,
+  electricalSensor,
+  airQualitySensor,
+  occupancySensor,
+  contactSensor,
+  waterLeakDetector,
+  smokeCoAlarm,
+  waterValve,
+  coverDevice,
+  fanDevice,
+  airPurifier,
+  thermostatDevice,
+  doorLockDevice,
+} from 'matterbridge';
 import { AnsiLogger, LogLevel } from 'matterbridge/logger';
 
 import { MqttClientClass } from './mqtt.js';
@@ -276,5 +303,46 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     } catch (e) {
       this.log.error(`error at: ${activeFuntion} - ${e}`);
     }
+  }
+
+  private mapDiscoveryToMatterDeviceType(deviceClass?: string, unit?: string): DeviceTypeDefinition {
+    const map: Record<string, DeviceTypeDefinition> = {
+      temperature: temperatureSensor,
+      humidity: humiditySensor,
+      pressure: pressureSensor,
+      illuminance: lightSensor,
+      power: electricalSensor,
+      energy: electricalSensor,
+      voltage: electricalSensor,
+      current: electricalSensor,
+      carbon_dioxide: airQualitySensor,
+      carbon_monoxide: airQualitySensor,
+      volatile_organic_compounds_parts: airQualitySensor,
+      motion: occupancySensor,
+      presence: occupancySensor,
+      door: contactSensor,
+      window: contactSensor,
+      moisture: waterLeakDetector,
+      smoke: smokeCoAlarm,
+      gas: smokeCoAlarm,
+      light: dimmableLight,
+      switch: onOffSwitch,
+      outlet: onOffOutlet,
+      valve: waterValve,
+      cover: coverDevice,
+      fan: fanDevice,
+      humidifier: airPurifier,
+      dehumidifier: airPurifier,
+      thermostat: thermostatDevice,
+      lock: doorLockDevice,
+    };
+
+    // Rückfalllogik
+    if (!deviceClass) {
+      if (unit && ['W', 'Wh', 'kWh'].includes(unit)) return electricalSensor;
+      if (unit && ['°C', '°F'].includes(unit)) return temperatureSensor;
+    }
+
+    return map[deviceClass ?? ''] ?? 'genericSwitch';
   }
 }
