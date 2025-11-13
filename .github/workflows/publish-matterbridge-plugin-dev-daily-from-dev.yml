@@ -4,7 +4,7 @@ name: Plugin daily dev publish to npm from dev branch
 on:
   # Daily at midnight UTC
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0 1 * *'
   # Allow manual dispatch
   workflow_dispatch:
 
