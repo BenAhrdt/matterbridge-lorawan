@@ -49,12 +49,13 @@ import {
   airPurifier,
   thermostatDevice,
   doorLockDevice,
+  modeSelect,
 } from 'matterbridge';
 import { AnsiLogger, LogLevel } from 'matterbridge/logger';
 
 import { MqttClientClass } from './mqtt.js';
 
-interface DevicePayload {
+interface EntityPayload {
   discovertype: string;
   discoverTopic: string;
   unique_id: string; // ⬅️ optional, weil Automations keine haben müssen
@@ -103,7 +104,7 @@ interface DevicePayload {
 
 interface DeviceInfo {
   name: string;
-  Ids: Record<string, DevicePayload>;
+  Ids: Record<string, EntityPayload>;
 }
 
 /**
@@ -125,7 +126,7 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
   // Declare Variables
   private client?: MqttClientClass;
   private discoveredDevices: Record<string, DeviceInfo> = {};
-  private discoveredIds: Record<string, DevicePayload> = {};
+  private discoveredIds: Record<string, EntityPayload> = {};
 
   constructor(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig) {
     // Always call super(matterbridge, log, config)
@@ -289,13 +290,14 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       }*/
 
       for (const id of Object.values(device.Ids)) {
+        const deviceTypeDefinition = this.mapDiscoveryToMatterDeviceType(id);
         /* const child = new MatterbridgeEndpoint(onOffOutlet, {
           uniqueStorageKey: id.unique_id,
         })
           .createDefaultBridgedDeviceBasicInformationClusterServer(id.name, 'unknown', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'LoRa Child Endpoint', 10001, '1.0.0')
           .addRequiredClusterServers(); */
         // Assign:
-        bridgeDevice.addChildDeviceType(id.name, onOffOutlet);
+        bridgeDevice.addChildDeviceType(id.name, deviceTypeDefinition);
       }
 
       // Register device
@@ -305,7 +307,7 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     }
   }
 
-  private mapDiscoveryToMatterDeviceType(deviceClass?: string, unit?: string): DeviceTypeDefinition {
+  private mapDiscoveryToMatterDeviceType(entityPayload: EntityPayload): DeviceTypeDefinition {
     const map: Record<string, DeviceTypeDefinition> = {
       temperature: temperatureSensor,
       humidity: humiditySensor,
@@ -337,12 +339,29 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       lock: doorLockDevice,
     };
 
-    // Rückfalllogik
-    if (!deviceClass) {
-      if (unit && ['W', 'Wh', 'kWh'].includes(unit)) return electricalSensor;
-      if (unit && ['°C', '°F'].includes(unit)) return temperatureSensor;
+    if( entityPayload.device_class && map[entityPayload.device_class]) {
+      return map[entityPayload.device_class];
     }
 
-    return map[deviceClass ?? ''] ?? 'genericSwitch';
+    // Unit based Fallback
+    const unit = entityPayload.unit_of_measurement;
+    if (unit) {
+      if (['W', 'Wh', 'kWh'].includes(unit)) return electricalSensor;
+      if (['°C', '°F'].includes(unit)) return temperatureSensor;
+    }
+
+    // Erweiterte Rückfalllogik
+    if (entityPayload.discoveryType === 'number') {
+      if (entityPayload.min != null && entityPayload.min >= 0 && entityPayload.max != null && entityPayload.max <= 100) {
+        return dimmableLight;
+      }
+      return modeSelect;
+    }
+
+    if (entityPayload.discoveryType === 'select') {
+      return modeSelect;
+    }
+    // General Fallback
+    return genericSwitch;
   }
 }
