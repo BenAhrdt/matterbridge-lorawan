@@ -37,7 +37,8 @@ export class MqttClientClass extends EventEmitter {
       clientId: `matterbridge-lorawan-plugin`,
     };
 
-    this.client = mqtt.connect(settings.host, options);
+    const host = settings.host?.startsWith('mqtt://') || settings.host?.startsWith('mqtts://') ? settings.host : `mqtt://${settings.host}`;
+    this.client = mqtt.connect(host, options);
 
     this.registerEventHandlers();
   }

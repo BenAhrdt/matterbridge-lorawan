@@ -28,6 +28,8 @@ import {
   PlatformMatterbridge,
   MatterbridgeEndpoint,
   genericSwitch,
+  bridgedNode,
+  powerSource,
   DeviceTypeDefinition,
   // DeviceTypes used in HA → Matter mapping
   onOffOutlet,
@@ -56,7 +58,7 @@ import { AnsiLogger, LogLevel } from 'matterbridge/logger';
 import { MqttClientClass } from './mqtt.js';
 
 interface EntityPayload {
-  discovertype: string;
+  discoverType: string;
   discoverTopic: string;
   unique_id: string; // ⬅️ optional, weil Automations keine haben müssen
   name: string;
@@ -199,7 +201,6 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       // Get Type
       discoverTopic = discoverTopic.replace(`${String(this.config.discoverTopic)}/`, '');
       payload.discoverType = discoverTopic.substring(0, discoverTopic.indexOf('/'));
-      this.log.error(payload.discoverType);
       const IduniqueId = payload.unique_id;
       const DeviceName = payload.device.name;
       const DeviceIdentifier = payload.device.identifiers[0];
@@ -249,28 +250,8 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     const activeFuntion = 'module.ts - discoverDevice';
     this.log.info(`Function started: ${activeFuntion}`);
     try {
-      /* const deviceToDiscover = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: deviceUniqueId })
-        .createDefaultBridgedDeviceBasicInformationClusterServer(
-          device.name,
-          'SN123456',
-          this.matterbridge.aggregatorVendorId,
-          'Matterbridge',
-          'Matterbridge Outlet',
-          10000,
-          '1.0.0',
-        )
-        .createDefaultPowerSourceWiredClusterServer()
-        .addRequiredClusterServers()
-        .addCommandHandler('on', (data) => {
-          this.log.info(`Command on called on cluster ${data.cluster}`);
-        })
-        .addCommandHandler('off', (data) => {
-          this.log.info(`Command off called on cluster ${data.cluster}`);
-        });
-
-      await this.registerDevice(deviceToDiscover);*/
       // Bridge-Hauptgerät
-      const bridgeDevice = new MatterbridgeEndpoint(genericSwitch, {
+      const bridgeDevice = new MatterbridgeEndpoint([bridgedNode, powerSource], {
         id: deviceUniqueId,
       })
         .createDefaultBridgedDeviceBasicInformationClusterServer(
@@ -285,19 +266,15 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
         .createDefaultPowerSourceWiredClusterServer()
         .addRequiredClusterServers();
 
-      /* for (const id of Object.values(device.Ids)) {
-        bridgeDevice.addChildDeviceType(id.unique_id, onOffOutlet);
-      }*/
-
       for (const id of Object.values(device.Ids)) {
         const deviceTypeDefinition = this.mapDiscoveryToMatterDeviceType(id);
-        /* const child = new MatterbridgeEndpoint(onOffOutlet, {
-          uniqueStorageKey: id.unique_id,
-        })
-          .createDefaultBridgedDeviceBasicInformationClusterServer(id.name, 'unknown', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'LoRa Child Endpoint', 10001, '1.0.0')
-          .addRequiredClusterServers(); */
-        // Assign:
-        bridgeDevice.addChildDeviceType(id.name, deviceTypeDefinition);
+        if (id.discoverType) {
+          this.log.error(id.discoverType);
+        }
+        this.log.error(JSON.stringify(deviceTypeDefinition));
+        // Assign Childenpoint:
+        const childEndpoint = bridgeDevice.addChildDeviceType(id.name, deviceTypeDefinition);
+        childEndpoint.addRequiredClusterServers();
       }
 
       // Register device
