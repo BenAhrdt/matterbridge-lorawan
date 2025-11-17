@@ -271,7 +271,7 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       await this.registerDevice(deviceToDiscover);*/
       // Bridge-Hauptgerät
       const bridgeDevice = new MatterbridgeEndpoint(genericSwitch, {
-        uniqueStorageKey: deviceUniqueId,
+        id: deviceUniqueId,
       })
         .createDefaultBridgedDeviceBasicInformationClusterServer(
           device.name,
@@ -339,7 +339,7 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       lock: doorLockDevice,
     };
 
-    if( entityPayload.device_class && map[entityPayload.device_class]) {
+    if (entityPayload.device_class && map[entityPayload.device_class]) {
       return map[entityPayload.device_class];
     }
 
