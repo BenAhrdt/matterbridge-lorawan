@@ -52,6 +52,8 @@ import {
   thermostatDevice,
   doorLockDevice,
   modeSelect,
+  waterHeater,
+  roboticVacuumCleaner,
 } from 'matterbridge';
 import { AnsiLogger, LogLevel } from 'matterbridge/logger';
 
@@ -285,7 +287,7 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
   }
 
   private mapDiscoveryToMatterDeviceType(entityPayload: EntityPayload): DeviceTypeDefinition {
-    const map: Record<string, DeviceTypeDefinition> = {
+    const mapDeviceClass: Record<string, DeviceTypeDefinition> = {
       temperature: temperatureSensor,
       humidity: humiditySensor,
       pressure: pressureSensor,
@@ -316,8 +318,63 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
       lock: doorLockDevice,
     };
 
-    if (entityPayload.device_class && map[entityPayload.device_class]) {
-      return map[entityPayload.device_class];
+    const mapDiscoverType: Record<string, DeviceTypeDefinition> = {
+      // --- Sensoren ---
+      binary_sensor: contactSensor, // Tür/Fenster, Bewegung, Präsenz, Wasser, Rauch …
+      sensor: genericSwitch, // generische Messwerte
+
+      // --- Buttons / Trigger ---
+      button: genericSwitch, // Auslöser ohne Zustand
+      event: genericSwitch, // Automations-Event
+      device_automation: genericSwitch,
+
+      // --- Licht / Energie / Schalten ---
+      switch: onOffSwitch,
+      light: dimmableLight,
+      number: temperatureSensor, // Level, Temperatur, Lautstärke …
+      select: modeSelect, // Modus-Wähler
+      text: genericSwitch, // Texteingabe
+      notify: genericSwitch, // Benachrichtigungs-Endpunkt
+      update: genericSwitch, // OTA
+
+      // --- Klima / Umwelt ---
+      climate: thermostatDevice,
+      fan: fanDevice,
+      humidifier: airPurifier, // falls vorhanden
+      water_heater: waterHeater,
+
+      // --- Sicherheit & Zugang ---
+      lock: doorLockDevice,
+      siren: genericSwitch,
+
+      // --- Bewegbare Elemente ---
+      cover: coverDevice, // Rollläden, Jalousien, Tore
+      valve: waterValve, // Wasser-/Gasventile
+
+      // --- Smart-Geräte ---
+      vacuum: roboticVacuumCleaner,
+      lawn_mower: roboticVacuumCleaner,
+
+      // --- Medien / Bild ---
+      camera: genericSwitch,
+      image: genericSwitch,
+
+      // --- Anwesenheit / Ortung ---
+      device_tracker: genericSwitch,
+
+      // --- Szenen ---
+      scene: genericSwitch,
+
+      // --- Tags ---
+      tag: genericSwitch,
+    };
+
+    if (entityPayload.device_class && mapDeviceClass[entityPayload.device_class]) {
+      return mapDeviceClass[entityPayload.device_class];
+    }
+
+    if (entityPayload.discoverType && mapDiscoverType[entityPayload.discoverType]) {
+      return mapDiscoverType[entityPayload.discoverType];
     }
 
     // Unit based Fallback
